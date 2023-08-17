@@ -11,8 +11,7 @@ import lombok.Data;
 public class Employee implements Serializable{
 	private static final long serialVersionUID = 1L;
 
-	@Min(0)
-	long id;
+	Long id;
 	
 	@NotEmpty
 	public String birthDate;

@@ -32,6 +32,11 @@ public class EmployeeController {
 	
 	@PostMapping
 	public Employee addEmployee(@RequestBody @Valid Employee employee) {
+		Long id = employee.getId();
+		if (id != null) {
+			log.warn("Employee contains not null id from client", id);
+			employee.setId(null);
+		}
 		Employee res = service.addEmployee(employee);
 		log.debug("Employee with id {} was added", employee.getId());
 		return res;
@@ -54,7 +59,7 @@ public class EmployeeController {
 	@PutMapping("{id}")
 	public Employee updateEmployee(@PathVariable int id, @RequestBody @Valid Employee empl) {
 		if (empl.getId() != id) {
-			throw new IllegalArgumentException("ID not equals to id from employee");
+			throw new IllegalArgumentException("ID doesn't exist");
 		}
 		Employee emplUpdated = service.updateEmployee(empl);
 		log.debug("Employee with id {} was updated", id);

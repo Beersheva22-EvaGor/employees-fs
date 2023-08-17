@@ -18,12 +18,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException.NotFound;
 
 import employees.spring.model.Employee;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
+import telran.spring.beersheba.exceptions.NotFoundException;
 
 @Service
 @Slf4j
@@ -34,18 +36,18 @@ public class EmployeeServiceImpl implements EmployeeService, EmployeesPersistanc
 	private Map<Long, Employee> mapEmployee = new HashMap<Long, Employee>();
 	
 	@SuppressWarnings("unlikely-arg-type")
-	private @NotEmpty Integer generateId() {
+	private @NotEmpty Long generateId() {
 		ThreadLocalRandom random = ThreadLocalRandom.current();
-		int randomId;
+		Long randomId;
 		do {
-			randomId = random.nextInt(MIN_ID, MAX_ID);
+			randomId = random.nextLong(MIN_ID, MAX_ID);
 		} while (mapEmployee.containsKey(randomId));
 		return randomId;
 	}
 	
 	@Override
 	public Employee addEmployee(Employee employee) {
-		if (employee.getId() == 0)
+		if (employee.getId() == null)
 			employee.setId(generateId());
 		writeLock.lock();
 		try {
@@ -75,7 +77,7 @@ public class EmployeeServiceImpl implements EmployeeService, EmployeesPersistanc
 		try {
 			Employee empl = mapEmployee.remove(id);
 			if (empl == null) {
-				throw new RuntimeException("Map contained no mapping for the key " + id);
+				throw new NotFoundException("Id not found " + id);
 			}
 		} finally {
 			writeLock.unlock();
@@ -84,18 +86,15 @@ public class EmployeeServiceImpl implements EmployeeService, EmployeesPersistanc
 
 	@Override
 	public Employee updateEmployee(Employee empl) {
-		readLock.lock();
 		writeLock.lock();
 		try {
 			if (!mapEmployee.containsKey(empl.getId())) {
-				throw new RuntimeException("No ad with id " + empl.getId() + " was found");
+				throw new NotFoundException("Not found " + empl.getId());
 			}
 			Employee emplFound = mapEmployee.put(empl.getId(), empl);			
 			return emplFound;
 		} finally {
 			writeLock.unlock();
-			readLock.unlock();
-
 		}
 	}
 
@@ -116,7 +115,7 @@ public class EmployeeServiceImpl implements EmployeeService, EmployeesPersistanc
 
 	@PostConstruct
 	private void restoreEmployees() {
-		restore().forEach(e -> mapEmployee.put(e.getId(), e));
+		restore().forEach(e -> addEmployee(e));
 	}
 	
 	@SuppressWarnings("unchecked")
